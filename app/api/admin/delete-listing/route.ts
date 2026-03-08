@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
     const supabase = createSupabaseServerClient()
@@ -9,7 +9,9 @@ export async function POST(request: Request) {
 
     try {
         const { listing_id, reason } = await request.json()
-        const supabaseAdmin = createSupabaseServerClient() // service role
+        const supabaseAdmin = createSupabaseAdminClient() // service role
+        const { data: adminData } = await supabaseAdmin.from('admins').select('role').eq('id', user.id).single()
+        if (!adminData) return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
 
         // 1. Mark listing as deleted
         const { error: updateError } = await supabaseAdmin

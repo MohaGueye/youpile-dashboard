@@ -1,5 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server"
 import { DisputesQueue } from "@/components/disputes/DisputesQueue"
+import { Button } from "@/components/ui/button"
+import { Download } from "lucide-react"
 
 export default async function DisputesPage() {
     const supabase = createSupabaseServerClient()
@@ -18,6 +20,12 @@ export default async function DisputesPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold tracking-tight text-foreground">File des Litiges</h1>
+                <a href="/api/admin/export?table=disputes" target="_blank">
+                    <Button variant="outline" className="gap-2">
+                        <Download className="h-4 w-4" />
+                        Exporter CSV
+                    </Button>
+                </a>
             </div>
 
             <DisputesQueue data={disputes || []} />

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import {
     LayoutDashboard,
     Users,
+    Shield,
     ShoppingBag,
     CreditCard,
     AlertTriangle,
@@ -18,6 +19,7 @@ import {
 
 const navItems = [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { title: "Administrateurs", href: "/admins", icon: Shield },
     { title: "Utilisateurs", href: "/users", icon: Users },
     { title: "Annonces", href: "/listings", icon: ShoppingBag },
     { title: "Transactions", href: "/transactions", icon: CreditCard },

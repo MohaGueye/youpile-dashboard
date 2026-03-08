@@ -25,9 +25,6 @@ export function ListingsTable({ data }: { data: any[] }) {
                     body: JSON.stringify({ listing_id: listingId, reason: "Violation des CGU" })
                 })
                 if (res.ok) { toast.success("Annonce supprimée"); router.refresh() }
-            } else {
-                // Direct update via pseudo-api or generic update (simplified for UI demonstration)
-                toast.error("Endpoint générique de MAJ non implémenté - Use Delete")
             }
         } catch {
             toast.error("Erreur")

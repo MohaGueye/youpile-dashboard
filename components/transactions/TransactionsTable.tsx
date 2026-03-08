@@ -9,8 +9,35 @@ import { MoreHorizontal, FileText, CheckCircle, RotateCcw } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import Link from "next/link"
+import toast from "react-hot-toast"
+import { useRouter } from "next/navigation"
 
 export function TransactionsTable({ data }: { data: any[] }) {
+    const router = useRouter()
+    const [loadingId, setLoadingId] = React.useState<string | null>(null)
+
+    const handleAction = async (id: string, endpoint: string, successMsg: string) => {
+        if (!confirm("Confirmer cette action irréversible sur la transaction ?")) return;
+        setLoadingId(id)
+        try {
+            const res = await fetch(`/api/admin/${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transaction_id: id, reason: "Intervention Admin" })
+            })
+            const result = await res.json()
+            if (res.ok) {
+                toast.success(successMsg)
+                router.refresh()
+            } else {
+                toast.error(result.error || "Erreur serveur")
+            }
+        } catch {
+            toast.error("Erreur réseau")
+        } finally {
+            setLoadingId(null)
+        }
+    }
     const columns: ColumnDef<any>[] = [
         {
             accessorKey: "id",
@@ -66,13 +93,21 @@ export function TransactionsTable({ data }: { data: any[] }) {
                                 <FileText className="h-4 w-4" /> Voir détail
                             </Link>
                             {t.status === 'escrow' && (
-                                <button className="flex items-center gap-2 px-4 py-2 text-sm text-success hover:bg-green-50 w-full text-left">
-                                    <CheckCircle className="h-4 w-4" /> Forcer libération
+                                <button
+                                    onClick={() => handleAction(t.id, 'release-escrow', 'Transaction forcée et créancier payé')}
+                                    disabled={loadingId === t.id}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-success hover:bg-green-50 w-full text-left"
+                                >
+                                    <CheckCircle className="h-4 w-4" /> {loadingId === t.id ? "En cours..." : "Forcer libération"}
                                 </button>
                             )}
                             {['escrow', 'paid', 'pending'].includes(t.status) && (
-                                <button className="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-red-50 w-full text-left">
-                                    <RotateCcw className="h-4 w-4" /> Rembourser
+                                <button
+                                    onClick={() => handleAction(t.id, 'refund', 'Acheteur remboursé')}
+                                    disabled={loadingId === t.id}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-red-50 w-full text-left"
+                                >
+                                    <RotateCcw className="h-4 w-4" /> {loadingId === t.id ? "En cours..." : "Rembourser"}
                                 </button>
                             )}
                         </div>

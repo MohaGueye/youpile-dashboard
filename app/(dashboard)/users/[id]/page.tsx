@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ShieldAlert, ShieldCheck, Mail, MapPin, Phone, Wallet } from "lucide-react"
 import { UserModeration } from "@/components/users/UserModeration"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ListingsTable } from "@/components/listings/ListingsTable"
+import { TransactionsTable } from "@/components/transactions/TransactionsTable"
 
 export default async function UserDetailPage({ params }: { params: { id: string } }) {
     const supabase = createSupabaseServerClient()
@@ -13,12 +16,16 @@ export default async function UserDetailPage({ params }: { params: { id: string 
         { data: profile },
         { count: activeListings },
         { count: totalTransactions },
-        { data: reviews }
+        { data: reviews },
+        { data: sellerListings },
+        { data: userTransactions }
     ] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', params.id).single(),
         supabase.from('listings').select('*', { count: 'exact', head: true }).eq('seller_id', params.id).eq('status', 'active'),
         supabase.from('transactions').select('*', { count: 'exact', head: true }).or(`buyer_id.eq.${params.id},seller_id.eq.${params.id}`),
-        supabase.from('reviews').select('rating').eq('reviewed_id', params.id)
+        supabase.from('reviews').select('rating').eq('reviewed_id', params.id),
+        supabase.from('listings').select(`*, categories(name), profiles(username), listing_photos(photo_url)`).eq('seller_id', params.id).order('created_at', { ascending: false }),
+        supabase.from('transactions').select(`*, buyer:buyer_id(username), seller:seller_id(username)`).or(`buyer_id.eq.${params.id},seller_id.eq.${params.id}`).order('created_at', { ascending: false })
     ])
 
     if (!profile) return notFound()
@@ -92,18 +99,47 @@ export default async function UserDetailPage({ params }: { params: { id: string 
                 </Card>
             </div>
 
-            <div className="mt-8 border-b border-border">
-                <div className="flex gap-6 pb-px overflow-x-auto text-sm font-medium">
-                    <div className="border-b-2 border-primary text-primary-dark pb-3 px-1">Aperçu & Annonces</div>
-                    {/* For real implementation we'd use tabs, keeping it simple mapped view for now */}
-                </div>
-            </div>
+            <div className="mt-8">
+                <Tabs defaultValue="annonces" className="w-full">
+                    <TabsList className="w-full justify-start border-b rounded-none h-auto bg-transparent p-0">
+                        <TabsTrigger
+                            value="annonces"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3 font-medium text-text-muted data-[state=active]:text-primary-dark"
+                        >
+                            Ses Annonces
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="transactions"
+                            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-6 py-3 font-medium text-text-muted data-[state=active]:text-primary-dark"
+                        >
+                            Ses Transactions
+                        </TabsTrigger>
+                    </TabsList>
 
-            <div className="py-6">
-                <h3 className="text-lg font-semibold mb-4">Dernières transactions de cet utilisateur</h3>
-                <div className="text-sm text-text-muted bg-surface p-6 rounded-lg border border-border text-center">
-                    L'intégration des onglets complets se fera via des sous-composants dédiés. (Vue simplifiée)
-                </div>
+                    <div className="pt-6">
+                        <TabsContent value="annonces" className="m-0 focus-visible:outline-none">
+                            <h3 className="text-lg font-semibold mb-4">Annonces publiées par {profile.username}</h3>
+                            <div className="bg-white border text-sm border-border rounded-lg shadow-sm">
+                                {sellerListings && sellerListings.length > 0 ? (
+                                    <ListingsTable data={sellerListings} />
+                                ) : (
+                                    <div className="p-8 text-center text-text-muted">Cet utilisateur n'a publié aucune annonce.</div>
+                                )}
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="transactions" className="m-0 focus-visible:outline-none">
+                            <h3 className="text-lg font-semibold mb-4">Historique des transactions de {profile.username}</h3>
+                            <div className="bg-white border text-sm border-border rounded-lg shadow-sm">
+                                {userTransactions && userTransactions.length > 0 ? (
+                                    <TransactionsTable data={userTransactions} />
+                                ) : (
+                                    <div className="p-8 text-center text-text-muted">Cet utilisateur n'a aucune transaction.</div>
+                                )}
+                            </div>
+                        </TabsContent>
+                    </div>
+                </Tabs>
             </div>
 
         </div>

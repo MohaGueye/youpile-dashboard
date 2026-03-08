@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
     const supabase = createSupabaseServerClient()
@@ -9,7 +9,9 @@ export async function POST(request: Request) {
 
     try {
         const { dispute_id, action, note } = await request.json()
-        const supabaseAdmin = createSupabaseServerClient()
+        const supabaseAdmin = createSupabaseAdminClient()
+        const { data: adminData } = await supabaseAdmin.from('admins').select('role').eq('id', user.id).single()
+        if (!adminData) return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
 
         const { data: dispute } = await supabaseAdmin
             .from('disputes')
