@@ -35,12 +35,17 @@ export function DropdownMenuTrigger({ children, asChild }: { children: React.Rea
     )
 }
 
-export function DropdownMenuContent({ children }: { children: React.ReactNode }) {
+export function DropdownMenuContent({ children, align = 'end' }: { children: React.ReactNode, align?: 'start' | 'end' | 'center' }) {
     const context = React.useContext(DropdownMenuContext)
     if (!context || !context.open) return null
 
+    const alignClass = align === 'end' ? 'right-0' : 'left-0'
+
     return (
-        <div className="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <div className={cn(
+            "absolute z-50 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none",
+            alignClass
+        )}>
             <div className="py-1">
                 {children}
             </div>
@@ -48,19 +53,35 @@ export function DropdownMenuContent({ children }: { children: React.ReactNode })
     )
 }
 
-export function DropdownMenuItem({ children, onClick, className }: { children: React.ReactNode, onClick?: () => void, className?: string }) {
+export function DropdownMenuItem({ children, onClick, className, disabled, asChild }: { children: React.ReactNode, onClick?: () => void, className?: string, disabled?: boolean, asChild?: boolean }) {
     const context = React.useContext(DropdownMenuContext)
+
+    const baseClass = cn(
+        "block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed",
+        className
+    )
+
+    if (asChild && React.isValidElement(children)) {
+        return React.cloneElement(children as React.ReactElement<any>, {
+            onClick: () => {
+                if (disabled) return
+                if (onClick) onClick()
+                if (children.props.onClick) children.props.onClick()
+                if (context) context.setOpen(false)
+            },
+            className: cn(baseClass, children.props.className)
+        })
+    }
 
     return (
         <button
             onClick={() => {
+                if (disabled) return
                 if (onClick) onClick()
                 if (context) context.setOpen(false)
             }}
-            className={cn(
-                "block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-gray-100",
-                className
-            )}
+            disabled={disabled}
+            className={baseClass}
         >
             {children}
         </button>

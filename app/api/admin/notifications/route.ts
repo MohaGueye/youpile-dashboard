@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseAdminClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
+    const supabase = createSupabaseServerClient()
     const supabaseAdmin = createSupabaseAdminClient()
-    const { data: { user } } = await supabaseAdmin.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { data: adminData } = await supabaseAdmin.from('admins').select('role').eq('id', user.id).single()
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
             const { data: allUsers } = await supabaseAdmin
                 .from('profiles')
                 .select('id')
-            recipientIds = allUsers?.map(u => u.id) || []
+            recipientIds = allUsers?.map((u: any) => u.id) || []
         }
 
         if (recipientIds.length === 0) {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
         }
 
         // Insert notifications
-        const notifications = recipientIds.map(userId => ({
+        const notifications = recipientIds.map((userId: string) => ({
             user_id: userId,
             type,
             title,
@@ -58,8 +59,9 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+    const supabase = createSupabaseServerClient()
     const supabaseAdmin = createSupabaseAdminClient()
-    const { data: { user } } = await supabaseAdmin.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { data: adminData } = await supabaseAdmin.from('admins').select('role').eq('id', user.id).single()
