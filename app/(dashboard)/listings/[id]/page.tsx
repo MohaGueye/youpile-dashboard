@@ -1,11 +1,11 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Badge } from "@/components/ui/badge"
 import { ListingModeration } from "@/components/listings/ListingModeration"
 
 export default async function ListingDetailPage({ params }: { params: { id: string } }) {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     const { data: listing } = await supabase
         .from('listings')

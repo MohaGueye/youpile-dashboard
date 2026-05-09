@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
     const supabase = createSupabaseServerClient()

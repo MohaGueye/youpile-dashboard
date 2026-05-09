@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,7 @@ import { ListingsTable } from "@/components/listings/ListingsTable"
 import { TransactionsTable } from "@/components/transactions/TransactionsTable"
 
 export default async function UserDetailPage({ params }: { params: { id: string } }) {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     const [
         { data: profile },

@@ -1,8 +1,8 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { ReportsTable } from "@/components/reports/ReportsTable"
 
 export default async function ReportsPage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     // Fetch pending reports
     const { data: reports } = await supabase

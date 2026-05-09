@@ -1,8 +1,10 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { BrandsTable } from "@/components/catalog/BrandsTable"
 
+export const dynamic = 'force-dynamic'
+
 export default async function BrandsPage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     const { data: brands } = await supabase
         .from('brands')

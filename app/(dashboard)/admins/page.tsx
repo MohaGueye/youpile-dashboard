@@ -1,41 +1,45 @@
-import { createSupabaseAdminClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server"
 import { AdminsTable } from "@/components/admins/AdminsTable"
 import { redirect } from "next/navigation"
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminsPage() {
+    const supabase = createSupabaseServerClient()
     const supabaseAdmin = createSupabaseAdminClient()
 
     // Auth check
-    const { data: { user } } = await supabaseAdmin.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
     const { data: currentAdmin } = await supabaseAdmin.from('admins').select('role').eq('id', user.id).single()
     if (!currentAdmin) redirect('/login')
 
-    // Fetch admins manually
-    // We join with profiles using the id since admins.id = profiles.id
-    const { data: admins } = await supabaseAdmin
+    // Fetch all admins
+    const { data: adminsData } = await supabaseAdmin
         .from('admins')
-        .select(`
-            id,
-            role,
-            created_at,
-            profiles(email, username, avatar_url)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
-    // Safe formatting for the table
-    const formattedAdmins = (admins || []).map(admin => {
-        // Handle array or single object from the join
-        const profile = Array.isArray(admin.profiles) ? admin.profiles[0] : admin.profiles;
+    // Fetch profiles for usernames
+    const { data: profilesData } = await supabaseAdmin
+        .from('profiles')
+        .select('id, username')
+
+    // Fetch auth users for emails
+    const { data: { users: authUsers } } = await supabaseAdmin.auth.admin.listUsers()
+
+    // Merge data
+    const formattedAdmins = (adminsData || []).map(admin => {
+        const profile = profilesData?.find(p => p.id === admin.id)
+        const authUser = authUsers?.find(u => u.id === admin.id)
+        
         return {
             id: admin.id,
             role: admin.role,
             created_at: admin.created_at,
-            email: profile?.email || 'N/A',
-            username: profile?.username || 'Utilisateur inconnu',
+            email: authUser?.email || 'N/A',
+            username: profile?.username || authUser?.email?.split('@')[0] || 'Admin',
         }
     })
 

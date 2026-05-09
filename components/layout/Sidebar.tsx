@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import * as React from "react"
 import { usePathname } from "next/navigation"
+import { createSupabaseBrowserClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import {
     LayoutDashboard,
@@ -33,6 +35,27 @@ const navItems = [
 
 export function Sidebar() {
     const pathname = usePathname()
+    const [role, setRole] = React.useState<string | null>(null)
+    const supabase = createSupabaseBrowserClient()
+
+    React.useEffect(() => {
+        console.log('Sidebar fetching user...')
+        supabase.auth.getUser().then(({ data, error }) => {
+            if (error) console.error('Sidebar auth error:', error)
+            if (data.user) {
+                console.log('Sidebar user found:', data.user.email)
+                supabase.from('admins').select('role').eq('id', data.user.id).single().then(({ data: adminData, error: adminError }) => {
+                    if (adminError) console.error('Sidebar role error:', adminError)
+                    if (adminData) {
+                        console.log('Sidebar role found:', adminData.role)
+                        setRole(adminData.role)
+                    }
+                })
+            } else {
+                console.warn('Sidebar: No user found')
+            }
+        })
+    }, [supabase])
 
     return (
         <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-surface border-r border-border flex flex-col">
@@ -45,6 +68,9 @@ export function Sidebar() {
 
             <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
                 {navItems.map((item) => {
+                    // Hide Admins for regular admins
+                    if (item.title === "Administrateurs" && role === 'admin') return null
+                    
                     const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
                     const Icon = item.icon
                     return (

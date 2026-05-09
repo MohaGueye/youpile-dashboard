@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { Users, ShoppingBag, CreditCard, DollarSign, AlertTriangle, UserCheck } from "lucide-react"
 import { KPICard } from "@/components/dashboard/KPICard"
 import { RegistrationsChart } from "@/components/dashboard/RegistrationsChart"
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { format, subDays, startOfDay } from "date-fns"
 
 export default async function DashboardPage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
     const today = startOfDay(new Date()).toISOString()
 
     // KPIs

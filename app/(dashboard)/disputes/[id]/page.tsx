@@ -1,9 +1,9 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { DisputeDetail } from "@/components/disputes/DisputeDetail"
 
 export default async function DisputeDetailPage({ params }: { params: { id: string } }) {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     const { data: dispute } = await supabase
         .from('disputes')

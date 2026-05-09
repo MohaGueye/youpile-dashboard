@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useState } from "react"
 import { Folder, FolderPlus, Pen, Trash2, GripVertical, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -21,26 +22,50 @@ export function CategoriesTree({ categories }: { categories: any[] }) {
         try {
             const endpoint = '/api/admin/catalog/categories'
             const method = id ? 'PUT' : 'POST'
-            const body = id ? { id, name: inputValue } : { name: inputValue, parent_id: parentId }
+            const body = id ? { id, name: inputValue } : { name: inputValue, parent_id: parentId || null }
 
-            const res = await fetch(endpoint, { method, body: JSON.stringify(body) })
+            console.log('Saving category:', { method, body })
+            const res = await fetch(endpoint, { 
+                method, 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body) 
+            })
+            const data = await res.json()
             if (res.ok) {
-                toast.success(id ? "Catégorie modifiée" : "Catégorie ajoutée")
-                setAddingTo(null)
+                toast.success("Catégorie enregistrée")
                 setEditingId(null)
+                setAddingTo(null)
                 setInputValue("")
                 router.refresh()
-            } else toast.error("Erreur serveur")
-        } catch { toast.error("Erreur") } finally { setLoadingId(null) }
+            } else {
+                toast.error(data.error || "Erreur lors de l'enregistrement")
+            }
+        } catch (err: any) {
+            console.error('Save category error:', err)
+            toast.error("Erreur réseau")
+        } finally {
+            setLoadingId(null)
+        }
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Supprimer cette catégorie et tous ses enfants ?")) return
+        if (!confirm("Voulez-vous vraiment supprimer cette catégorie ?")) return
         setLoadingId(id)
         try {
             const res = await fetch(`/api/admin/catalog/categories?id=${id}`, { method: 'DELETE' })
-            if (res.ok) { toast.success("Catégorie supprimée"); router.refresh() }
-        } catch { toast.error("Erreur") } finally { setLoadingId(null) }
+            const data = await res.json()
+            if (res.ok) { 
+                toast.success("Catégorie supprimée")
+                router.refresh() 
+            } else {
+                toast.error(data.error || "Erreur lors de la suppression")
+            }
+        } catch (err: any) {
+            console.error('Delete category error:', err)
+            toast.error("Erreur réseau")
+        } finally {
+            setLoadingId(null)
+        }
     }
 
     const InputForm = ({ onCancel, onSave }: { onCancel: () => void, onSave: () => void }) => (

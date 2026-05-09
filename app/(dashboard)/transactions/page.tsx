@@ -1,10 +1,10 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { TransactionsTable } from "@/components/transactions/TransactionsTable"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 
 export default async function TransactionsPage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     // Fetch transactions with relations
     const { data: transactions } = await supabase

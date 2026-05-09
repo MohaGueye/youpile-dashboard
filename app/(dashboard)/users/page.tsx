@@ -1,10 +1,10 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { UsersTable } from "@/components/users/UsersTable"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 
 export default async function UsersPage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     // Fetch profiles sorted by newest
     const { data: users } = await supabase

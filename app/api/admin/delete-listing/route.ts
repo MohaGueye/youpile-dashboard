@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient, createSupabaseServerClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 
 export async function POST(request: Request) {
     const supabase = createSupabaseServerClient()
@@ -28,14 +29,14 @@ export async function POST(request: Request) {
             .eq('target_id', listing_id)
             .eq('target_type', 'listing')
 
-        // 3. Get seller id to notify
+        // 3. Get user id to notify
         const { data: listingData } = await supabaseAdmin
             .from('listings')
-            .select('seller_id, title')
+            .select('user_id, title')
             .eq('id', listing_id)
             .single()
 
-        if (listingData?.seller_id) {
+        if (listingData?.user_id) {
             await fetch(`${process.env.NEXT_PUBLIC_FUNCTIONS_URL}/send-push-notification`, {
                 method: "POST",
                 headers: {
@@ -43,15 +44,17 @@ export async function POST(request: Request) {
                     "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`
                 },
                 body: JSON.stringify({
-                    user_id: listingData.seller_id,
+                    user_id: listingData.user_id,
                     title: "Annonce supprimée ⚠️",
                     body: `Votre annonce "${listingData.title}" a été supprimée par la modération. Motif: ${reason || 'Violation des règles'}`,
                 })
             })
         }
 
+        revalidatePath('/(dashboard)/listings', 'page')
         return NextResponse.json({ success: true })
     } catch (error: any) {
+        console.error('Delete listing error:', error)
         return NextResponse.json({ error: error.message }, { status: 500 })
     }
 }

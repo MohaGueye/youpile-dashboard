@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request) {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new NextResponse('Unauthorized', { status: 401 })
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         }
 
         // 2. Real API call to Bictorys Payment Engine
-        const bictorysRes = await fetch("https://api.bictorys.com/v1/payouts", {
+        const bictorysRes = await fetch("https://api.test.bictorys.com/pay/v1/payouts", {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${process.env.BICTORYS_SECRET_KEY}`,

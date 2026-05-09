@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { createSupabaseServerClient, createSupabaseAdminClient } from '@/lib/supabase/server'
+import { createSupabaseAdminClient, createSupabaseAdminClient } from '@/lib/supabase/server'
 import { unparse } from 'papaparse' // normally use this or raw string concatenation for csv
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const table = searchParams.get('table')
 
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return new NextResponse('Unauthorized', { status: 401 })
 

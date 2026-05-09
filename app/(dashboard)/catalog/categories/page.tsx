@@ -1,8 +1,10 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { CategoriesTree } from "@/components/catalog/CategoriesTree"
 
+export const dynamic = 'force-dynamic'
+
 export default async function CategoriesPage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     const { data: categories } = await supabase
         .from('categories')

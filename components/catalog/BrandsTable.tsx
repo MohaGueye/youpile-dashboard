@@ -9,6 +9,12 @@ import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function BrandsTable({ data }: { data: any[] }) {
     const router = useRouter()
@@ -22,16 +28,22 @@ export function BrandsTable({ data }: { data: any[] }) {
         setLoadingId('add')
         try {
             const res = await fetch('/api/admin/catalog/brands', {
-                method: 'POST', body: JSON.stringify({ name, logo_url: logoUrl })
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, logo_url: logoUrl })
             })
+            const data = await res.json()
             if (res.ok) {
                 toast.success("Marque ajoutée")
                 setIsAddMode(false)
                 setName("")
                 setLogoUrl("")
                 router.refresh()
-            } else toast.error("Erreur")
-        } catch { toast.error("Erreur") } finally { setLoadingId(null) }
+            } else toast.error(data.error || "Erreur")
+        } catch (err: any) { 
+            console.error('Add brand error:', err)
+            toast.error("Erreur réseau") 
+        } finally { setLoadingId(null) }
     }
 
     const handleDelete = async (id: string) => {
@@ -39,18 +51,38 @@ export function BrandsTable({ data }: { data: any[] }) {
         setLoadingId(id)
         try {
             const res = await fetch(`/api/admin/catalog/brands?id=${id}`, { method: 'DELETE' })
-            if (res.ok) { toast.success("Marque supprimée"); router.refresh() }
-        } catch { toast.error("Erreur") } finally { setLoadingId(null) }
+            const data = await res.json()
+            if (res.ok) { 
+                toast.success("Marque supprimée")
+                router.refresh() 
+            } else {
+                toast.error(data.error || "Erreur lors de la suppression")
+            }
+        } catch (err) { 
+            console.error('Delete brand error:', err)
+            toast.error("Erreur réseau") 
+        } finally { setLoadingId(null) }
     }
 
     const handleToggleActive = async (id: string, name: string, is_active: boolean) => {
         setLoadingId(id)
         try {
             const res = await fetch('/api/admin/catalog/brands', {
-                method: 'PUT', body: JSON.stringify({ id, name, is_active: !is_active })
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, name, is_active: !is_active })
             })
-            if (res.ok) { toast.success("Statut modifié"); router.refresh() }
-        } catch { toast.error("Erreur") } finally { setLoadingId(null) }
+            const data = await res.json()
+            if (res.ok) { 
+                toast.success("Statut modifié")
+                router.refresh() 
+            } else {
+                toast.error(data.error || "Erreur lors de la modification")
+            }
+        } catch (err) { 
+            console.error('Toggle brand error:', err)
+            toast.error("Erreur réseau") 
+        } finally { setLoadingId(null) }
     }
     const columns: ColumnDef<any>[] = [
         {
@@ -83,33 +115,45 @@ export function BrandsTable({ data }: { data: any[] }) {
         {
             accessorKey: "created_at",
             header: "Date d'ajout",
-            cell: ({ row }) => <span className="text-xs">{format(new Date(row.original.created_at), 'dd MMM yyyy', { locale: fr })}</span>
+            cell: ({ row }) => {
+                try {
+                    const dateStr = row.original.created_at
+                    if (!dateStr) return <span className="text-xs text-text-muted">N/A</span>
+                    const date = new Date(dateStr)
+                    if (isNaN(date.getTime())) return <span className="text-xs text-text-muted">N/A</span>
+                    return <span className="text-xs">{format(date, 'dd MMM yyyy', { locale: fr })}</span>
+                } catch {
+                    return <span className="text-xs text-text-muted">N/A</span>
+                }
+            }
         },
         {
             id: "actions",
             cell: ({ row }) => {
                 return (
-                    <div className="relative group inline-block text-left" tabIndex={0}>
-                        <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                        <div className="absolute right-0 top-full mt-1 z-50 hidden group-focus-within:block w-48 bg-white border border-border shadow-lg rounded-md py-1">
-                            <button
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
                                 onClick={() => handleToggleActive(row.original.id, row.original.name, row.original.is_active)}
                                 disabled={loadingId === row.original.id}
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-gray-100 w-full text-left"
                             >
-                                <Pen className="h-4 w-4" /> Activer/Désactiver
-                            </button>
-                            <button
+                                <Pen className="mr-2 h-4 w-4" /> 
+                                {row.original.is_active ? "Désactiver" : "Activer"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
                                 onClick={() => handleDelete(row.original.id)}
                                 disabled={loadingId === row.original.id}
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-red-50 w-full text-left"
+                                className="text-error focus:text-error"
                             >
-                                <Trash2 className="h-4 w-4" /> Supprimer
-                            </button>
-                        </div>
-                    </div>
+                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )
             },
         },

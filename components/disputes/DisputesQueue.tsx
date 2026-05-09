@@ -29,12 +29,18 @@ export function DisputesQueue({ data }: { data: any[] }) {
         {
             accessorKey: "buyer",
             header: "Acheteur",
-            cell: ({ row }) => <span>{row.original.buyer?.username}</span>
+            cell: ({ row }) => {
+                const buyer = row.original.transactions?.buyer || row.original.buyer
+                return <span>{buyer?.username || 'N/A'}</span>
+            }
         },
         {
             accessorKey: "seller",
             header: "Vendeur",
-            cell: ({ row }) => <span>{row.original.seller?.username}</span>
+            cell: ({ row }) => {
+                const seller = row.original.transactions?.seller || row.original.seller
+                return <span>{seller?.username || 'N/A'}</span>
+            }
         },
         {
             accessorKey: "reason",

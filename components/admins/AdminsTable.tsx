@@ -5,11 +5,17 @@ import { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/shared/DataTable"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Plus, Shield, ShieldAlert, Trash2 } from "lucide-react"
+import { MoreHorizontal, Plus, Shield, ShieldAlert, ShieldCheck, Trash2, Pen } from "lucide-react"
 import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export type AdminData = {
     id: string
@@ -19,9 +25,16 @@ export type AdminData = {
     username: string
 }
 
+const ROLE_LABELS: Record<string, { label: string, color: string, icon: any }> = {
+    owner: { label: "Propriétaire", color: "bg-red-600 hover:bg-red-700", icon: ShieldAlert },
+    super_admin: { label: "Super Admin", color: "bg-purple-600 hover:bg-purple-700", icon: ShieldCheck },
+    admin: { label: "Admin", color: "bg-blue-600 hover:bg-blue-700", icon: Shield },
+}
+
 export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: { initialAdmins: AdminData[], currentUserRole: string, currentUserId: string }) {
     const router = useRouter()
     const [isAddMode, setIsAddMode] = React.useState(false)
+    const [editingAdmin, setEditingAdmin] = React.useState<AdminData | null>(null)
     const [loading, setLoading] = React.useState(false)
 
     // Add form state
@@ -29,10 +42,21 @@ export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: {
     const [password, setPassword] = React.useState("")
     const [role, setRole] = React.useState("admin")
 
+    // Edit form state
+    const [editUsername, setEditUsername] = React.useState("")
+    const [editRole, setEditRole] = React.useState("")
+
+    React.useEffect(() => {
+        if (editingAdmin) {
+            setEditUsername(editingAdmin.username)
+            setEditRole(editingAdmin.role)
+        }
+    }, [editingAdmin])
+
     const handleAddAdmin = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (currentUserRole !== 'super_admin') {
-            toast.error("Seuls les super_admins peuvent ajouter des administrateurs.")
+        if (currentUserRole === 'admin') {
+            toast.error("Non autorisé")
             return
         }
         setLoading(true)
@@ -60,12 +84,48 @@ export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: {
         }
     }
 
-    const handleDelete = async (adminId: string) => {
+    const handleEditAdmin = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editingAdmin) return
+        setLoading(true)
+        try {
+            const res = await fetch('/api/admin/admins', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    admin_id: editingAdmin.id, 
+                    role: editRole !== editingAdmin.role ? editRole : undefined,
+                    username: editUsername !== editingAdmin.username ? editUsername : undefined
+                })
+            })
+            const data = await res.json()
+            if (res.ok) {
+                toast.success("Administrateur modifié")
+                setEditingAdmin(null)
+                router.refresh()
+            } else {
+                toast.error(data.error || "Erreur lors de la modification")
+            }
+        } catch {
+            toast.error("Erreur réseau")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleDelete = async (adminId: string, adminRole: string) => {
         if (!confirm("Voulez-vous vraiment supprimer cet administrateur ?")) return
-        if (currentUserRole !== 'super_admin') {
+        
+        // Hierarchy check
+        if (currentUserRole === 'admin') {
             toast.error("Non autorisé")
             return
         }
+        if (currentUserRole === 'super_admin' && (adminRole === 'owner' || adminRole === 'super_admin')) {
+            toast.error("Vous ne pouvez supprimer que les Admins standards")
+            return
+        }
+
         try {
             const res = await fetch(`/api/admin/admins?id=${adminId}`, { method: 'DELETE' })
             const data = await res.json()
@@ -74,30 +134,6 @@ export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: {
                 router.refresh()
             } else {
                 toast.error(data.error || "Erreur lors de la suppression")
-            }
-        } catch {
-            toast.error("Erreur réseau")
-        }
-    }
-
-    const handleChangeRole = async (adminId: string, newRole: string) => {
-        if (!confirm(`Changer le rôle en ${newRole} ?`)) return
-        if (currentUserRole !== 'super_admin') {
-            toast.error("Non autorisé")
-            return
-        }
-        try {
-            const res = await fetch('/api/admin/admins', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ admin_id: adminId, role: newRole })
-            })
-            const data = await res.json()
-            if (res.ok) {
-                toast.success("Rôle mis à jour")
-                router.refresh()
-            } else {
-                toast.error(data.error || "Erreur mise à jour")
             }
         } catch {
             toast.error("Erreur réseau")
@@ -119,11 +155,12 @@ export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: {
             accessorKey: "role",
             header: "Rôle",
             cell: ({ row }) => {
-                const isAdmin = row.original.role === 'admin'
+                const roleData = ROLE_LABELS[row.original.role] || { label: row.original.role, color: "bg-gray-500", icon: Shield }
+                const Icon = roleData.icon
                 return (
-                    <Badge variant={isAdmin ? "outline" : "default"} className={isAdmin ? "" : "bg-purple-600 hover:bg-purple-700"}>
-                        {isAdmin ? <Shield className="h-3 w-3 mr-1" /> : <ShieldAlert className="h-3 w-3 mr-1" />}
-                        {row.original.role}
+                    <Badge className={`${roleData.color} text-white border-none gap-1`}>
+                        <Icon className="h-3 w-3" />
+                        {roleData.label}
                     </Badge>
                 )
             }
@@ -139,28 +176,31 @@ export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: {
                 const admin = row.original
                 const isSelf = admin.id === currentUserId
 
-                if (currentUserRole !== 'super_admin' || isSelf) return null
+                // Hierarchy check for actions
+                const canManage = currentUserRole === 'owner' || 
+                    (currentUserRole === 'super_admin' && admin.role === 'admin')
+
+                if (!canManage || isSelf) return null
 
                 return (
-                    <div className="relative group inline-block text-left" tabIndex={0}>
-                        <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                        <div className="absolute right-0 top-full mt-1 z-50 hidden group-focus-within:block w-48 bg-white border border-border shadow-lg rounded-md py-1">
-                            <button
-                                onClick={() => handleChangeRole(admin.id, admin.role === 'admin' ? 'super_admin' : 'admin')}
-                                className="block px-4 py-2 text-sm text-foreground hover:bg-gray-100 w-full text-left"
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditingAdmin(admin)}>
+                                <Pen className="mr-2 h-4 w-4" /> Modifier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => handleDelete(admin.id, admin.role)}
+                                className="text-red-600 focus:text-red-600"
                             >
-                                Passer en {admin.role === 'admin' ? 'Super Admin' : 'Admin'}
-                            </button>
-                            <button
-                                onClick={() => handleDelete(admin.id)}
-                                className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left flex items-center gap-2"
-                            >
-                                <Trash2 className="h-4 w-4" /> Supprimer
-                            </button>
-                        </div>
-                    </div>
+                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )
             },
         },
@@ -168,7 +208,7 @@ export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: {
 
     return (
         <div className="space-y-4">
-            {currentUserRole === 'super_admin' && (
+            {currentUserRole !== 'admin' && (
                 <div className="flex justify-end mb-4">
                     <Button onClick={() => setIsAddMode(!isAddMode)} className="gap-2">
                         <Plus className="h-4 w-4" />
@@ -184,39 +224,76 @@ export function AdminsTable({ initialAdmins, currentUserRole, currentUserId }: {
                         <div>
                             <label className="block text-sm font-medium mb-1">Email</label>
                             <input
-                                type="email"
-                                required
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
+                                type="email" required value={email} onChange={e => setEmail(e.target.value)}
                                 className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Mot de passe</label>
                             <input
-                                type="password"
-                                required
-                                minLength={6}
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
+                                type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)}
                                 className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-1">Rôle</label>
                             <select
-                                value={role}
-                                onChange={e => setRole(e.target.value)}
+                                value={role} onChange={e => setRole(e.target.value)}
                                 className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             >
                                 <option value="admin">Administrateur Standard</option>
-                                <option value="super_admin">Super Administrateur</option>
+                                {currentUserRole === 'owner' && (
+                                    <>
+                                        <option value="super_admin">Super Administrateur</option>
+                                        <option value="owner">Propriétaire</option>
+                                    </>
+                                )}
                             </select>
                         </div>
                         <Button type="submit" disabled={loading}>
                             {loading ? "Création..." : "Créer le compte"}
                         </Button>
                     </form>
+                </div>
+            )}
+
+            {editingAdmin && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                    <div className="bg-white p-6 rounded-lg border border-border shadow-lg max-w-md w-full">
+                        <h3 className="text-lg font-medium mb-4">Modifier Administrateur</h3>
+                        <form onSubmit={handleEditAdmin} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Email (Lecture seule)</label>
+                                <input type="text" disabled value={editingAdmin.email} className="w-full flex h-10 rounded-md border bg-gray-50 px-3 py-2 text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Nom d'utilisateur</label>
+                                <input
+                                    type="text" value={editUsername} onChange={e => setEditUsername(e.target.value)}
+                                    className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">Rôle</label>
+                                <select
+                                    value={editRole} onChange={e => setEditRole(e.target.value)}
+                                    className="w-full flex h-10 rounded-md border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                >
+                                    <option value="admin">Administrateur Standard</option>
+                                    {currentUserRole === 'owner' && (
+                                        <>
+                                            <option value="super_admin">Super Administrateur</option>
+                                            <option value="owner">Propriétaire</option>
+                                        </>
+                                    )}
+                                </select>
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                                <Button type="button" variant="ghost" onClick={() => setEditingAdmin(null)}>Annuler</Button>
+                                <Button type="submit" disabled={loading}>Enregistrer</Button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 

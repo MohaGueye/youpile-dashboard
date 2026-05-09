@@ -11,6 +11,13 @@ import { fr } from "date-fns/locale"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
 
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
 export function ReportsTable({ data }: { data: any[] }) {
     const router = useRouter()
     const [loadingId, setLoadingId] = React.useState<string | null>(null)
@@ -19,7 +26,9 @@ export function ReportsTable({ data }: { data: any[] }) {
         setLoadingId(id)
         try {
             const res = await fetch('/api/admin/dismiss-report', {
-                method: 'POST', body: JSON.stringify({ report_id: id })
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ report_id: id })
             })
             if (res.ok) { toast.success("Signalement ignoré"); router.refresh() }
         } catch { toast.error("Erreur") } finally { setLoadingId(null) }
@@ -30,10 +39,16 @@ export function ReportsTable({ data }: { data: any[] }) {
         setLoadingId(reportId)
         try {
             const res = await fetch('/api/admin/ban-user', {
-                method: 'POST', body: JSON.stringify({ user_id: userId, ban: true })
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, ban: true })
             })
             if (res.ok) {
-                await fetch('/api/admin/dismiss-report', { method: 'POST', body: JSON.stringify({ report_id: reportId }) })
+                await fetch('/api/admin/dismiss-report', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ report_id: reportId }) 
+                })
                 toast.success("Utilisateur banni"); router.refresh()
             }
         } catch { toast.error("Erreur") } finally { setLoadingId(null) }
@@ -44,7 +59,9 @@ export function ReportsTable({ data }: { data: any[] }) {
         setLoadingId(reportId)
         try {
             const res = await fetch('/api/admin/delete-listing', {
-                method: 'POST', body: JSON.stringify({ listing_id: listingId, reason: "Signalement validé par modérateur" })
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ listing_id: listingId, reason: "Signalement validé par modérateur" })
             })
             if (res.ok) { toast.success("Contenu supprimé"); router.refresh() }
         } catch { toast.error("Erreur") } finally { setLoadingId(null) }
@@ -64,7 +81,7 @@ export function ReportsTable({ data }: { data: any[] }) {
         {
             accessorKey: "reporter",
             header: "Signaleur",
-            cell: ({ row }) => <span>{row.original.reporter?.username}</span>
+            cell: ({ row }) => <span>{row.original.reporter?.username || 'N/A'}</span>
         },
         {
             accessorKey: "reason",
@@ -79,54 +96,52 @@ export function ReportsTable({ data }: { data: any[] }) {
         {
             accessorKey: "created_at",
             header: "Date",
-            cell: ({ row }) => <span className="text-xs">{format(new Date(row.original.created_at), 'dd/MM/yyyy HH:mm')}</span>
+            cell: ({ row }) => {
+                const date = new Date(row.original.created_at)
+                return <span className="text-xs">{isNaN(date.getTime()) ? 'N/A' : format(date, 'dd/MM/yyyy HH:mm')}</span>
+            }
         },
         {
             id: "actions",
             cell: ({ row }) => {
                 const r = row.original
                 return (
-                    <div className="relative group inline-block text-left" tabIndex={0}>
-                        <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                        <div className="absolute right-0 top-full mt-1 z-50 hidden group-focus-within:block w-48 bg-white border border-border shadow-lg rounded-md py-1">
-                            {r.status !== 'dismissed' && r.status !== 'resolved' && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            {r.status !== 'dismissed' && r.status !== 'resolved' ? (
                                 <>
-                                    <button
-                                        onClick={() => handleDismiss(r.id)}
-                                        disabled={loadingId === r.id}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-gray-100 w-full text-left"
-                                    >
-                                        <EyeOff className="h-4 w-4" /> Ignorer
-                                    </button>
+                                    <DropdownMenuItem onClick={() => handleDismiss(r.id)}>
+                                        <EyeOff className="mr-2 h-4 w-4" /> Ignorer
+                                    </DropdownMenuItem>
                                     {r.target_type === 'profile' && (
-                                        <button
+                                        <DropdownMenuItem 
                                             onClick={() => handleBan(r.id, r.target_id)}
-                                            disabled={loadingId === r.id}
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-red-50 w-full text-left"
+                                            className="text-error focus:text-error"
                                         >
-                                            <Shield className="h-4 w-4" /> Bannir l'user
-                                        </button>
+                                            <Shield className="mr-2 h-4 w-4" /> Bannir l'user
+                                        </DropdownMenuItem>
                                     )}
-                                    {(r.target_type === 'listing') && (
-                                        <button
+                                    {r.target_type === 'listing' && (
+                                        <DropdownMenuItem 
                                             onClick={() => handleDelete(r.id, r.target_id)}
-                                            disabled={loadingId === r.id}
-                                            className="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-red-50 w-full text-left"
+                                            className="text-error focus:text-error"
                                         >
-                                            <Trash2 className="h-4 w-4" /> Supprimer l'annonce
-                                        </button>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer l'annonce
+                                        </DropdownMenuItem>
                                     )}
                                 </>
-                            )}
-                            {(r.status === 'dismissed' || r.status === 'resolved') && (
-                                <div className="px-4 py-2 text-xs text-text-muted text-center cursor-default">
+                            ) : (
+                                <div className="px-2 py-1.5 text-xs text-text-muted text-center italic">
                                     Déjà traité
                                 </div>
                             )}
-                        </div>
-                    </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )
             },
         },

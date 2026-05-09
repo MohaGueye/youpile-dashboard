@@ -1,4 +1,4 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { notFound } from "next/navigation"
 import { StatusBadge } from "@/components/shared/StatusBadge"
 import { Badge } from "@/components/ui/badge"
@@ -6,7 +6,7 @@ import { format } from "date-fns"
 import { fr } from "date-fns/locale"
 
 export default async function TransactionDetailPage({ params }: { params: { id: string } }) {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     const { data: transaction } = await supabase
         .from('transactions')

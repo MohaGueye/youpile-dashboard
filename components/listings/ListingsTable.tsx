@@ -13,6 +13,13 @@ import Link from "next/link"
 import toast from "react-hot-toast"
 import { useRouter } from "next/navigation"
 
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+
 export function ListingsTable({ data }: { data: any[] }) {
     const router = useRouter()
 
@@ -22,12 +29,20 @@ export function ListingsTable({ data }: { data: any[] }) {
                 if (!confirm("Voulez-vous vraiment supprimer cette annonce ?")) return;
                 const res = await fetch('/api/admin/delete-listing', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ listing_id: listingId, reason: "Violation des CGU" })
                 })
-                if (res.ok) { toast.success("Annonce supprimée"); router.refresh() }
+                const result = await res.json()
+                if (res.ok) { 
+                    toast.success("Annonce supprimée")
+                    router.refresh() 
+                } else {
+                    toast.error(result.error || "Erreur")
+                }
             }
-        } catch {
-            toast.error("Erreur")
+        } catch (err) {
+            console.error('Status change error:', err)
+            toast.error("Erreur réseau")
         }
     }
 
@@ -37,11 +52,13 @@ export function ListingsTable({ data }: { data: any[] }) {
             header: "Annonce",
             cell: ({ row }) => (
                 <div className="flex items-center gap-3 max-w-xs">
-                    <div className="h-12 w-12 rounded bg-gray-100 overflow-hidden flex-shrink-0">
-                        {row.original.listing_photos?.[0]?.photo_url ? (
-                            <img src={row.original.listing_photos[0].photo_url} alt="" className="object-cover h-full w-full" />
+                    <div className="h-12 w-12 rounded bg-gray-100 border border-border overflow-hidden flex-shrink-0">
+                        {row.original.listing_photos?.[0]?.url ? (
+                            <img src={row.original.listing_photos[0].url} alt="" className="object-cover h-full w-full" />
                         ) : (
-                            <Eye className="h-4 w-4 m-auto text-gray-400 mt-4" />
+                            <div className="flex h-full items-center justify-center bg-gray-50">
+                                <Eye className="h-4 w-4 text-gray-300" />
+                            </div>
                         )}
                     </div>
                     <div className="flex flex-col truncate">
@@ -54,12 +71,12 @@ export function ListingsTable({ data }: { data: any[] }) {
         {
             accessorKey: "seller",
             header: "Vendeur",
-            cell: ({ row }) => <span>{row.original.profiles?.username || row.original.seller_id}</span>
+            cell: ({ row }) => <span>{row.original.profiles?.username || 'N/A'}</span>
         },
         {
             accessorKey: "price",
             header: "Prix",
-            cell: ({ row }) => <span className="font-bold">{row.original.price} XOF</span>
+            cell: ({ row }) => <span className="font-bold">{row.original.price?.toLocaleString()} XOF</span>
         },
         {
             accessorKey: "status",
@@ -71,36 +88,46 @@ export function ListingsTable({ data }: { data: any[] }) {
             header: "Stats",
             cell: ({ row }) => (
                 <div className="text-xs text-text-muted">
-                    <span title="Vues">👁 {row.original.views_count}</span>{' '}
-                    <span title="Likes" className="ml-2">❤️ {row.original.likes_count}</span>
+                    <span title="Vues">👁 {row.original.views_count || 0}</span>{' '}
+                    <span title="Likes" className="ml-2">❤️ {row.original.likes_count || 0}</span>
                 </div>
             )
         },
         {
             accessorKey: "created_at",
             header: "Date",
-            cell: ({ row }) => <span>{format(new Date(row.original.created_at), 'dd MMM', { locale: fr })}</span>
+            cell: ({ row }) => {
+                const date = new Date(row.original.created_at)
+                return <span>{isNaN(date.getTime()) ? 'N/A' : format(date, 'dd MMM', { locale: fr })}</span>
+            }
         },
         {
             id: "actions",
             cell: ({ row }) => {
                 const u = row.original
                 return (
-                    <div className="relative group inline-block text-left" tabIndex={0}>
-                        <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                        <div className="absolute right-0 top-full mt-1 z-50 hidden group-focus-within:block w-48 bg-white border border-border shadow-lg rounded-md py-1">
-                            <Link href={`/listings/${u.id}`} className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-gray-100 w-full text-left">
-                                <Eye className="h-4 w-4" /> Voir le détail
-                            </Link>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                                <Link href={`/listings/${u.id}`} className="flex items-center w-full">
+                                    <Eye className="mr-2 h-4 w-4" /> Voir le détail
+                                </Link>
+                            </DropdownMenuItem>
                             {u.status !== 'deleted' && (
-                                <button onClick={() => handleStatusChange(u.id, 'deleted', true)} className="flex items-center gap-2 px-4 py-2 text-sm text-error hover:bg-red-50 w-full text-left">
-                                    <Trash2 className="h-4 w-4" /> Supprimer
-                                </button>
+                                <DropdownMenuItem 
+                                    onClick={() => handleStatusChange(u.id, 'deleted', true)}
+                                    className="text-error focus:text-error"
+                                >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                </DropdownMenuItem>
                             )}
-                        </div>
-                    </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )
             },
         },

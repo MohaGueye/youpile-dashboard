@@ -1,9 +1,9 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { PayoutsTable } from "@/components/finance/PayoutsTable"
 import { Wallet, PiggyBank, ArrowDownRight } from "lucide-react"
 
 export default async function FinancePage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     // KPI Fetch (simplified values)
     const [

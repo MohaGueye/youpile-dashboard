@@ -1,20 +1,27 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { createSupabaseAdminClient } from "@/lib/supabase/server"
 import { DisputesQueue } from "@/components/disputes/DisputesQueue"
 import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 
 export default async function DisputesPage() {
-    const supabase = createSupabaseServerClient()
+    const supabase = createSupabaseAdminClient()
 
     // Fetch disputes sorted by oldest first to process urgent ones
-    const { data: disputes } = await supabase
+    const { data: disputes, error } = await supabase
         .from('disputes')
         .select(`
-      *,
-      buyer:buyer_id (username),
-      seller:seller_id (username)
-    `)
+            *,
+            transactions:transaction_id (
+                buyer:buyer_id (username),
+                seller:seller_id (username)
+            ),
+            opened_by_profile:opened_by (username)
+        `)
         .order('created_at', { ascending: true })
+
+    if (error) {
+        console.error('Disputes fetch error:', error)
+    }
 
     return (
         <div className="space-y-6">
